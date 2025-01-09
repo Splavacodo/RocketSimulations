@@ -44,7 +44,7 @@ def main():
         # returned_time, deployment_level, drag_coefficient = observed_variables[-1]
 
         # Check if the rocket has reached burnout
-        if time < mojito.motor.burn_out_time:
+        if time < 4.68:  # mojito.motor.burn_out_time
             new_deployment_level = 0
         # If burn out is finished, fully deploy the air brakes
         else:
@@ -117,19 +117,24 @@ def main():
     # plt.show()
 
     # Comparison of flights
-    plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
+    # plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
     # base_test_flight.altitude()
-    # controlled_test_flight.altitude()
 
-    # controlled_test_flight.altitude()
     # controlled_test_flight.aerodynamic_drag()
-    # controlled_test_flight.prints.apogee_conditions()
+    controlled_test_flight.prints.apogee_conditions()
+    controlled_test_flight.altitude()
 
 def initialize_flight_environment():
-    env = Environment(latitude=32.990254, longitude=-106.974998, elevation=1400)
-    tomorrow = datetime.date.today() + datetime.timedelta(days=3)
+    # Spaceport Location
+    # env = Environment(latitude=32.990254, longitude=-106.974998, elevation=735)
 
-    env.set_date((tomorrow.year, tomorrow.month, tomorrow.day, 12))  # Hour given in UTC time
+    # Las Vegas Launch Site Environment
+    env = Environment(latitude=35.78, longitude=-115.25, elevation=735)
+    # 35.78 latitude
+    # -115.25 longitude
+    tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+
+    env.set_date((tomorrow.year, tomorrow.month, tomorrow.day, 21))  # Hour given in UTC time
     env.set_atmospheric_model(type="Forecast", file="GFS")
 
     return env
