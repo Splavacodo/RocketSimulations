@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import datetime
 
 def main():
-    env = initialize_flight_environment()
+    # Spaceport (New Mexico) latitude/longitude/elevation: latitude=32.990254, longitude=-106.974998, elevation=735
+    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=847)
     mojito = initialize_base_rocket()
 
     # mojito.draw()
@@ -41,13 +42,14 @@ def main():
         previous_vz = previous_state[5]
 
         # If we wanted to we could get the returned values from observed_variables:
-        # returned_time, deployment_level, drag_coefficient = observed_variables[-1]
+        # returned_time, deployment_level, drag_coefficient, height_err = observed_variables[-1]
 
         # Check if the rocket has reached burnout
         if time < 4.68:  # mojito.motor.burn_out_time
             new_deployment_level = 0
         # If burn out is finished, fully deploy the air brakes
         else:
+            # Replace with call to the controller function to determine deployment level
             new_deployment_level = 1
 
         # ------------ Work in Progress ----------------
@@ -57,6 +59,9 @@ def main():
         # At one point in time e(t) = Desired height - current height and e_dot(t) = e(t)/dt
         # There will then be another function that takes in the force and determines the best
         # air brake deployment level to match that force
+
+        # To calculate the derivative of the error, the error should be stored in observed variables to reference
+        # the previous error from the last iteration
         # ----------------------------------------------
 
         air_brakes.deployment_level = new_deployment_level
@@ -74,7 +79,7 @@ def main():
         sampling_rate=40,
         reference_area=None,
         clamp=True,
-        initial_observed_variables=[0, 0, 0],
+        initial_observed_variables=[0, 0, 0, 0],
         override_rocket_drag=False,
         name="Air Brakes"
     )
@@ -119,19 +124,41 @@ def main():
     # Comparison of flights
     # plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
     # base_test_flight.altitude()
+    # base_test_flight.prints.apogee_conditions()
 
     # controlled_test_flight.aerodynamic_drag()
-    controlled_test_flight.prints.apogee_conditions()
-    controlled_test_flight.altitude()
+    # controlled_test_flight.prints.apogee_conditions()
+    # controlled_test_flight.altitude()
 
-def initialize_flight_environment():
+    # Brakes shave off about 111 m or 365 ft, the goal of the controller could be to reach a height of 1100 meters
+
+def find_deployment_level(mach_num: float, drag_force: float) -> float:
+    '''
+    Determines the deployment level of the air brakes to provide a given drag force and the current speed of the rocket.
+
+    Args:
+        mach_num (float): The mach number the rocket is traveling at
+        drag_force (float): The drag force provided by the controller to reach the desired height
+
+    Returns:
+        deployment_level: The deployment level of the air brake to provide the given drag force
+    '''
+    ...
+
+def initialize_flight_environment(latitude: float, longitude: float, elevation: float):
+    '''
+    Initializes the flight environment for the simulation given the latitude, longitude, and elevation of the launch site.
+
+    Args:
+        latitude (float): Launch site latitude in degrees
+        longitude (float): Launch site longitude in degrees
+        elevation (float): Elevation of launch site above sea level
+    '''
     # Spaceport Location
     # env = Environment(latitude=32.990254, longitude=-106.974998, elevation=735)
 
     # Las Vegas Launch Site Environment
-    env = Environment(latitude=35.78, longitude=-115.25, elevation=735)
-    # 35.78 latitude
-    # -115.25 longitude
+    env = Environment(latitude=latitude, longitude=-longitude, elevation=elevation)
     tomorrow = datetime.date.today() + datetime.timedelta(days=1)
 
     env.set_date((tomorrow.year, tomorrow.month, tomorrow.day, 21))  # Hour given in UTC time
