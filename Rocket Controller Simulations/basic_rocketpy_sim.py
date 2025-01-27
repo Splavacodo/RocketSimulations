@@ -1,4 +1,6 @@
 from rocketpy import Environment, SolidMotor, Rocket, Flight
+from scipy.interpolate import RegularGridInterpolator
+from scipy.optimize import root_scalar
 import matplotlib.pyplot as plt
 import datetime
 
@@ -19,11 +21,13 @@ def main():
         terminate_on_apogee=False
     )
 
-    desired_height = 1097  # height in meters
+    # Brakes shave off about 111 m or 365 ft
+    desired_height = 1100 # height in meters
 
     # Gain parameters determined from root locus & step responses
-    K_p = 0.64
-    K_d = 8
+    K: float = 0.08
+    K_p: float = 0.08 * K
+    K_d: float = 1 * K
 
     # The controller function is within main since it needs a reference to the environment
     def controller_function(
@@ -45,12 +49,13 @@ def main():
         mach_number = free_stream_speed / env.speed_of_sound(altitude_ASL)
         air_density = env.density(altitude_ASL)
 
-        prev_time, _, _, prev_height_err = observed_variables[-1]
+        prev_time, _, _, prev_height_err, prev_controller_output = observed_variables[-1]
         height_err = desired_height - altitude_AGL
 
         # Check if the rocket has reached burnout
         if time < 4.68:  # mojito.motor.burn_out_time
             new_deployment_level = 0
+            controller_output = 0
         # If burn out is finished, apply PD control
         else:
             # ------------ Feedback Control ----------------
@@ -64,34 +69,59 @@ def main():
             # To calculate the derivative of the error, the error should be stored in observed variables to reference
             # the previous error from the last iteration
             # ----------------------------------------------
-            e_dot = (height_err - prev_height_err) / (time - prev_time)
-            controller_output = K_p * height_err + K_d * e_dot
+            deltaT = time - prev_time
 
-            new_deployment_level = find_deployment_level(mach_num=mach_number, curr_vel=vz, drag_force=controller_output, air_density=air_density)
+            if deltaT > 0:
+                e_dot = (height_err - prev_height_err) / (time - prev_time)
+                controller_output = K_p * height_err + K_d * e_dot
+            else:
+                controller_output = prev_controller_output
+
+            if height_err > 0:
+                new_deployment_level = find_deployment_level(
+                    mach_num=mach_number,
+                    curr_vel=vz,
+                    drag_force=-controller_output,
+                    air_density=air_density
+                )
+                # try:
+                #     new_deployment_level = find_deployment_level(
+                #         mach_num=mach_number,
+                #         curr_vel=vz,
+                #         drag_force=-controller_output,
+                #         air_density=air_density
+                #     )
+                # except ValueError: # If a value error occurs, the function diverged from a drag force that was too high
+                #     new_deployment_level = 1
+            else:
+                new_deployment_level = 0
+
 
         air_brakes.deployment_level = new_deployment_level
+
 
         # Return variables of interest to be saved in the observed_variables list
         return (
             time,
             air_brakes.deployment_level,
             air_brakes.drag_coefficient(air_brakes.deployment_level, mach_number),
-            height_err
+            height_err,
+            controller_output
         )
 
     air_brakes = mojito.add_air_brakes(
         drag_coefficient_curve="air_brake_deployment_data.csv",
         controller_function=controller_function,
-        sampling_rate=40,
+        sampling_rate=200,
         reference_area=None,
         clamp=True,
-        initial_observed_variables=[0, 0, 0, 0],
+        initial_observed_variables=[0, 0, 0, 0, 0],
         override_rocket_drag=False,
         name="Air Brakes"
     )
 
     # air_brakes.all_info()
-
+    
     controlled_test_flight = Flight(
         rocket=mojito,
         environment=env,
@@ -102,23 +132,24 @@ def main():
         terminate_on_apogee=True
     )
 
-    time_list, deployment_level_list, drag_coefficient_list, height_err_list = [], [], [], []
+    time_list, deployment_level_list, drag_coefficient_list, height_err_list, controller_output_list = [], [], [], [], []
 
     obs_vars = controlled_test_flight.get_controller_observed_variables()
 
-    for time, deployment_level, drag_coefficient, height_err in obs_vars:
+    for time, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
         time_list.append(time)
         deployment_level_list.append(deployment_level)
         drag_coefficient_list.append(drag_coefficient)
         height_err_list.append(height_err)
+        controller_output_list.append(controller_output)
 
     # Plot deployment level by time
-    # plt.plot(time_list, deployment_level_list)
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Deployment Level")
-    # plt.title("Deployment Level by Time")
-    # plt.grid()
-    # plt.show()
+    plt.plot(time_list, deployment_level_list)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Deployment Level")
+    plt.title("Deployment Level by Time")
+    plt.grid()
+    plt.show()
 
     # Plot drag coefficient by time
     # plt.plot(time_list, drag_coefficient_list)
@@ -139,20 +170,18 @@ def main():
     # Comparison of flights
     # plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
     # base_test_flight.altitude()
-    # base_test_flight.prints.apogee_conditions()
+    base_test_flight.prints.apogee_conditions()
 
     # controlled_test_flight.aerodynamic_drag()
-    # controlled_test_flight.prints.apogee_conditions()
+    controlled_test_flight.prints.apogee_conditions()
     # controlled_test_flight.altitude()
-
-    # Brakes shave off about 111 m or 365 ft, the goal of the controller could be to reach a height of 1100 meters
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
     '''
     Determines the deployment level of the air brakes to provide a given drag force and the current speed of the rocket.
 
     Args:
-        mach_num (float): The mach number the rocket is traveling at
+        mach_num (float): The Mach number the rocket is traveling at
         curr_vel (float): The current velocity of the rocket in meters/sec
         drag_force (float): The drag force provided by the controller to reach the desired height
         air_density (float): The air density of air given the current height of the rocket in kg/m^3
@@ -160,29 +189,72 @@ def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, a
     Returns:
         deployment_level (float): The deployment level of the air brake to provide the given drag force
     '''
-    # F_drag = 1/2 * C_d * rho * A * V^2
-    # A = (2 * F_drag) / rho * C_d * V^2
+    air_brake_area = 0.0033483 # m², the full air brake area
 
-    return 1
+    # Helper function to find the drag coefficient for a given deployment level
+    def drag_force_error(deployment_level: float) -> float:
+        print("Drag Force to Reach:", drag_force)
+        # Interpolate drag coefficient based on Mach number and deployment level
+        drag_coefficient = find_air_brake_drag_coefficient(mach_num, deployment_level)
 
-def find_air_brake_drag_coefficient(mach_number: float) -> float:
+        # F_drag = 1/2 * C_d * rho * A  * V^2, C_d is a function of deployment level, so it's not included here
+        calculated_drag_force = 0.5 * drag_coefficient * air_density * air_brake_area * curr_vel ** 2
+        print("Calculated Drag Force:", calculated_drag_force)
+
+        return calculated_drag_force - drag_force
+
+    max_force = 0.5 * find_air_brake_drag_coefficient(mach_num, 1) * air_density * air_brake_area * curr_vel**2
+
+    if max_force < drag_force:
+        return 1
+    elif drag_force < 0:
+        return 0
+
+    # Use root finding to determine the deployment level
+    deployment_level = root_scalar(
+        drag_force_error,
+        bracket=[0, 1],  # Deployment levels range from 0 (closed) to 1 (fully deployed)
+        method='bisect',
+        xtol=1e-3
+    ).root
+
+    print("Deployment Level:", deployment_level)
+
+    return deployment_level
+
+def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float) -> float:
     '''
-    Determines the air brake drag coefficient
-    '''
-    # Each index in the lists corresponds to a deployment level
-    # deployment level: [0, 0.25, 0.5, 0.75, 1]
-    drag_coeffs = {
-        0.1: [0.484455781, 0.370481556, 0.424189869, 0.460481711, 0.501541095],
-        0.2: [0.49451265, 0.327569465, 0.409090087, 0.455112722, 0.49773203],
-        0.3: [0.501742369, 0.31367034, 0.406985797, 0.456193802, 0.499135351],
-        0.4: [0.504890439, 0.317494903, 0.409256946, 0.461219701, 0.503252629],
-        0.5: [0.506025828, 0.323488649, 0.410878827, 0.464872337, 0.508892964],
-        0.6: [0.506592807, 0.320294485, 0.413512723, 0.469369044, 0.514095489],
-        0.7: [0.507668973, 0.30957922, 0.421336892, 0.471799453, 0.523979987],
-        0.8: [0.51117623, 0.308752715, 0.424021613, 0.482733443, 0.533868504],
-        0.9: [0.521776412, 0.303223303, 0.427707593, 0.486100686, 0.547969309]
-    }
+    Determines the air brake drag coefficient based on Mach number and deployment level.
 
+    Args:
+        mach_number (float): The Mach number of the rocket
+        deployment_level (float): The deployment level of the air brake (0 to 1)
+
+    Returns:
+        drag_coefficient (float): The interpolated drag coefficient.
+    '''
+    if deployment_level == 0:
+        return 0
+
+    deployment_levels: list[float] = [0, 0.25, 0.5, 0.75, 1]
+    mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    drag_coeffs: list[list[float]] = [
+        [0, 0, 0, 0, 0],
+        [0.484455781, 0.370481556, 0.424189869, 0.460481711, 0.501541095],
+        [0.49451265, 0.327569465, 0.409090087, 0.455112722, 0.49773203],
+        [0.501742369, 0.31367034, 0.406985797, 0.456193802, 0.499135351],
+        [0.504890439, 0.317494903, 0.409256946, 0.461219701, 0.503252629],
+        [0.506025828, 0.323488649, 0.410878827, 0.464872337, 0.508892964],
+        [0.506592807, 0.320294485, 0.413512723, 0.469369044, 0.514095489],
+        [0.507668973, 0.30957922, 0.421336892, 0.471799453, 0.523979987],
+        [0.51117623, 0.308752715, 0.424021613, 0.482733443, 0.533868504],
+        [0.521776412, 0.303223303, 0.427707593, 0.486100686, 0.547969309]
+    ]
+
+    interpolator = RegularGridInterpolator((mach_numbers, deployment_levels), drag_coeffs)
+    drag_coefficient = interpolator([[mach_number, deployment_level]])[0]
+
+    return drag_coefficient
 
 def initialize_flight_environment(latitude: float, longitude: float, elevation: float):
     '''
