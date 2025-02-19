@@ -9,7 +9,7 @@ def main():
     # Spaceport (New Mexico) latitude/longitude/elevation: latitude=32.990254, longitude=-106.974998, elevation=735
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
-    env = initialize_flight_environment(latitude=39.279167, longitude=109.041111, elevation=1499)
+    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=847)
     mojito = initialize_base_rocket()
 
     # mojito.draw()
@@ -23,10 +23,12 @@ def main():
         terminate_on_apogee=True
     )
 
-    desired_height: int = 460  # height in meters
+    # desired_height: int = 460  # height in meters (for J250 motor)
+    desired_height: int = 1080  # height in meters (for K400 motor)
 
     # Gain parameters determined from root locus & step responses
-    K: float = 0.068
+    # K: float = 0.068  # for J250
+    K: float = 0.072
     K_p: float = 0.08 * K
     K_d: float = 1 * K
 
@@ -128,6 +130,16 @@ def main():
 
     obs_vars = controlled_test_flight.get_controller_observed_variables()
 
+    # with open("k400SimulatedAltitude", "w") as altitude_file:
+    #     for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
+    #         time_list.append(time)
+    #         altitude_list.append(altitude)
+    #         altitude_file.write(str(altitude) + "\n")
+    #         deployment_level_list.append(deployment_level)
+    #         drag_coefficient_list.append(drag_coefficient)
+    #         height_err_list.append(height_err)
+    #         controller_output_list.append(-controller_output)
+
     for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
         time_list.append(time)
         altitude_list.append(altitude)
@@ -137,20 +149,20 @@ def main():
         controller_output_list.append(-controller_output)
 
     # Plot deployment level by time
-    plt.plot(time_list, deployment_level_list)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Deployment Level")
-    plt.title("Deployment Level vs. Time")
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, deployment_level_list)
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Deployment Level")
+    # plt.title("Deployment Level vs. Time")
+    # plt.grid()
+    # plt.show()
 
     # Plot of controller output by time
-    plt.plot(time_list, controller_output_list)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Controller Force Output (N)")
-    plt.title("Controller Force Output vs. Time")
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, controller_output_list)
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Controller Force Output (N)")
+    # plt.title("Controller Force Output vs. Time")
+    # plt.grid()
+    # plt.show()
 
     # Plot drag coefficient by time
     # plt.plot(time_list, drag_coefficient_list)
@@ -161,33 +173,117 @@ def main():
     # plt.show()
 
     # Plot of height err with time
-    plt.plot(time_list, height_err_list)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Height Error [m]")
-    plt.title("Height Error vs. Time")
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, height_err_list)
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Height Error [m]")
+    # plt.title("Height Error vs. Time")
+    # plt.grid()
+    # plt.show()
 
     # Plot of the altitude of the rocket with time
-    plt.plot(time_list, altitude_list)
-    plt.axhline(y=desired_height, color='k', linestyle='--')
-    plt.xlabel("Time (s)")
-    plt.ylabel("Altitude (Above Ground Level) [m]")
-    plt.title("Altitude (Above Ground Level) vs. Time")
-    plt.legend(["Rocket Altitude", "Desired Height = " + str(desired_height) + " m"])
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, altitude_list)
+    # plt.axhline(y=desired_height, color='k', linestyle='--')
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Altitude (Above Ground Level) [m]")
+    # plt.title("Altitude (Above Ground Level) vs. Time")
+    # plt.legend(["Rocket Altitude", "Desired Height = " + str(desired_height) + " m"])
+    # plt.grid()
+    # plt.show()
 
     # Comparison of flights
     # plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
     # base_test_flight.altitude()
-    base_test_flight.prints.apogee_conditions()
+    # base_test_flight.prints.apogee_conditions()
 
     # controlled_test_flight.aerodynamic_drag()
-    controlled_test_flight.prints.apogee_conditions()
+    # controlled_test_flight.prints.apogee_conditions()
     # controlled_test_flight.altitude()
 
-    print("Apogee Error:", desired_height - altitude_list[-1], "m")
+    # print("Apogee Error:", desired_height - altitude_list[-1], "m")
+
+    K: float = 0.072
+    K_p: float = 0.08 * K
+    K_d: float = 1 * K
+
+    # To run another simulation, the whole rocket needs to be reinitialized
+    mojito = initialize_base_rocket()
+
+    mojito.add_air_brakes(
+        drag_coefficient_curve="air_brake_deployment_data.csv",
+        controller_function=controller_function,
+        sampling_rate=200,
+        reference_area=None,
+        clamp=True,
+        initial_observed_variables=[0, 0, 0, 0, 0, 0],
+        override_rocket_drag=False,
+        name="Air Brakes"
+    )
+
+    controlled_test_flight = Flight(
+        rocket=mojito,
+        environment=env,
+        rail_length=5.2,
+        inclination=85,
+        heading=0,
+        time_overshoot=False,
+        terminate_on_apogee=True
+    )
+
+    pd_time_list, pd_altitude_list, pd_deployment_level_list, pd_drag_coefficient_list, pd_height_err_list, pd_controller_output_list = [], [], [], [], [], []
+
+    obs_vars = controlled_test_flight.get_controller_observed_variables()
+
+    for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
+        pd_time_list.append(time)
+        pd_altitude_list.append(altitude)
+        pd_deployment_level_list.append(deployment_level)
+        pd_drag_coefficient_list.append(drag_coefficient)
+        pd_height_err_list.append(height_err)
+        pd_controller_output_list.append(-controller_output)
+
+    # Plot comparing deployment level
+    plt.plot(time_list, deployment_level_list)
+    plt.plot(pd_time_list, pd_deployment_level_list)
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Deployment Level")
+    plt.title("Deployment Level vs. Time")
+    plt.legend(["Ideal Gains", "Tuned Gains"])
+
+    plt.grid()
+    plt.show()
+
+    # Plot comparing controller output
+    plt.plot(time_list, controller_output_list)
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Controller Force Output (N)")
+    plt.title("Controller Force Output vs. Time")
+
+    plt.grid()
+    plt.show()
+
+    plt.plot(pd_time_list, pd_controller_output_list)
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Controller Force Output (N)")
+    plt.title("Controller Force Output vs. Time")
+
+    plt.grid()
+    plt.show()
+
+    # Plot comparing altitude
+    plt.plot(time_list, altitude_list)
+    plt.plot(pd_time_list, pd_altitude_list)
+    plt.axhline(y=desired_height, color='k', linestyle='--')
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Altitude (Above Ground Level) [m]")
+    plt.title("Altitude (Above Ground Level) vs. Time")
+    plt.legend(["Ideal Gains", "Tuned Gains", "Desired Height = " + str(desired_height) + " m"])
+
+    plt.grid()
+    plt.show()
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
@@ -278,7 +374,7 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
         elevation (float): Elevation of launch site above sea level
     """
     env = Environment(latitude=latitude, longitude=-longitude, elevation=elevation)
-    launch_day = datetime.date.today() + datetime.timedelta(days=4)
+    launch_day = datetime.date.today() + datetime.timedelta(days=0)
 
     env.set_date((launch_day.year, launch_day.month, launch_day.day, 18))  # Hour given in UTC time
     env.set_atmospheric_model(type="Forecast", file="GFS")
@@ -288,10 +384,46 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
 
 def initialize_base_rocket():
     # -------------------- Specifications for K400 motor --------------------
-    # AeroTech_K400C = SolidMotor(
-    #     thrust_source="AeroTech_K400C.eng",
-    #     dry_mass=0.701,  # mass of motor without propellant
-    #     dry_inertia=(7.53e-3, 7.53e-3, 2.55e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
+    AeroTech_K400C = SolidMotor(
+        thrust_source="AeroTech_K400C.eng",
+        dry_mass=0.701,  # mass of motor without propellant
+        dry_inertia=(7.53e-3, 7.53e-3, 2.55e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
+        nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
+        grain_number=3,
+        grain_density=1815,
+        grain_outer_radius=27 / 1000,
+        grain_initial_inner_radius=15 / 1000,
+        grain_initial_height=0.0718,
+        grain_separation=5 / 1000,
+        grains_center_of_mass_position=0.18,
+        center_of_dry_mass_position=0.177,
+        nozzle_position=0,
+        burn_time=3.2,  # seconds
+        throat_radius=11 / 1000,
+        coordinate_system_orientation="nozzle_to_combustion_chamber",
+    )
+
+    mojito = Rocket(
+        radius=0.0528,  # radius in m
+        mass=5.24,  # dry mass in kg
+        # All mass moments of inertia are using the dry mass of the rocket
+        # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
+        # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
+        inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
+        power_off_drag="powerOffDragCurveK400.csv",
+        power_on_drag="powerOnDragCurveK400.csv",
+        center_of_mass_without_motor=1.21,
+        coordinate_system_orientation="nose_to_tail"
+    )
+    #
+    # All the positions have to be relative to the distance of the center of mass without a motor
+    mojito.add_motor(AeroTech_K400C, position=2.105)
+
+    # -------------------- Specifications for J250 motor --------------------
+    # AeroTech_J250W = SolidMotor(
+    #     thrust_source="AeroTech_J250W.eng",
+    #     dry_mass=0.345,  # mass of motor without propellant, in kg
+    #     dry_inertia=(1.37e-3, 1.37e-3, 5.03e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
     #     nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
     #     grain_number=3,
     #     grain_density=1815,
@@ -299,7 +431,7 @@ def initialize_base_rocket():
     #     grain_initial_inner_radius=15 / 1000,
     #     grain_initial_height=0.0718,
     #     grain_separation=5 / 1000,
-    #     grains_center_of_mass_position=0.18,
+    #     grains_center_of_mass_position=0.19,
     #     center_of_dry_mass_position=0.177,
     #     nozzle_position=0,
     #     burn_time=2.9,  # seconds
@@ -314,50 +446,14 @@ def initialize_base_rocket():
     #     # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
     #     # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
     #     inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
-    #     power_off_drag="powerOffDragCurveK400.csv",
-    #     power_on_drag="powerOnDragCurveK400.csv",
+    #     power_off_drag="powerOffDragCurveJ250.csv",
+    #     power_on_drag="powerOnDragCurveJ250.csv",
     #     center_of_mass_without_motor=1.21,
     #     coordinate_system_orientation="nose_to_tail"
     # )
-    #
-    # # All the positions have to be relative to the distance of the center of mass without a motor
-    # mojito.add_motor(AeroTech_K400C, position=2.105)
-
-    # -------------------- Specifications for J250 motor --------------------
-    AeroTech_J250W = SolidMotor(
-        thrust_source="AeroTech_J250W.eng",
-        dry_mass=0.345,  # mass of motor without propellant, in kg
-        dry_inertia=(1.37e-3, 1.37e-3, 5.03e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
-        nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
-        grain_number=3,
-        grain_density=1815,
-        grain_outer_radius=27 / 1000,
-        grain_initial_inner_radius=15 / 1000,
-        grain_initial_height=0.0718,
-        grain_separation=5 / 1000,
-        grains_center_of_mass_position=0.19,
-        center_of_dry_mass_position=0.177,
-        nozzle_position=0,
-        burn_time=2.9,  # seconds
-        throat_radius=11 / 1000,
-        coordinate_system_orientation="nozzle_to_combustion_chamber",
-    )
-
-    mojito = Rocket(
-        radius=0.0528,  # radius in m
-        mass=5.24,  # dry mass in kg
-        # All mass moments of inertia are using the dry mass of the rocket
-        # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
-        # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
-        inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
-        power_off_drag="powerOffDragCurveJ250.csv",
-        power_on_drag="powerOnDragCurveJ250.csv",
-        center_of_mass_without_motor=1.21,
-        coordinate_system_orientation="nose_to_tail"
-    )
 
     # All the positions have to be relative to the distance of the center of mass without a motor
-    mojito.add_motor(AeroTech_J250W, position=2.105)
+    # mojito.add_motor(AeroTech_J250W, position=2.105)
     mojito.set_rail_buttons(upper_button_position=1.473, lower_button_position=2.06)
 
     # Add aerodynamic components
