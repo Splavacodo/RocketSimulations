@@ -9,8 +9,8 @@ def main():
     # Spaceport (New Mexico) latitude/longitude/elevation: latitude=32.990254, longitude=-106.974998, elevation=735
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
-    # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation
-    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=1615)
+    # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
+    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615)
     some_rocket_name = initialize_base_rocket()
 
     # some_rocket_name.draw()
@@ -105,7 +105,7 @@ def main():
         )
 
     air_brakes = some_rocket_name.add_air_brakes(
-        drag_coefficient_curve="air_brake_deployment_data.csv",
+        drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
         controller_function=controller_function,
         sampling_rate=200,
         reference_area=None,
@@ -210,7 +210,7 @@ def main():
     # some_rocket_name = initialize_base_rocket()
 
     # some_rocket_name.add_air_brakes(
-    #     drag_coefficient_curve="air_brake_deployment_data.csv",
+    #     drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
     #     controller_function=controller_function,
     #     sampling_rate=200,
     #     reference_area=None,
@@ -348,15 +348,15 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
     mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     drag_coeffs: list[list[float]] = [
         [0, 0, 0, 0, 0],
-        [0.484455781, 0.370481556, 0.424189869, 0.460481711, 0.501541095],
-        [0.49451265, 0.327569465, 0.409090087, 0.455112722, 0.49773203],
-        [0.501742369, 0.31367034, 0.406985797, 0.456193802, 0.499135351],
-        [0.504890439, 0.317494903, 0.409256946, 0.461219701, 0.503252629],
-        [0.506025828, 0.323488649, 0.410878827, 0.464872337, 0.508892964],
-        [0.506592807, 0.320294485, 0.413512723, 0.469369044, 0.514095489],
-        [0.507668973, 0.30957922, 0.421336892, 0.471799453, 0.523979987],
-        [0.51117623, 0.308752715, 0.424021613, 0.482733443, 0.533868504],
-        [0.521776412, 0.303223303, 0.427707593, 0.486100686, 0.547969309]
+        [0, 0.444486249, 0.507960781, 0.544841711, 0.594581464],
+        [0, 0.417785388, 0.483700124, 0.525607668, 0.571021268],
+        [0, 0.406705275, 0.479774019, 0.52385219, 0.568730609],
+        [0, 0.409961944, 0.479198954, 0.522773668, 0.570856452],
+        [0, 0.409147947, 0.483454287, 0.528634803, 0.578541851],
+        [0, 0.411546029, 0.484154172, 0.537079146, 0.587973526],
+        [0, 0.407979926, 0.491932723, 0.543695454, 0.598682104],
+        [0, 0.413460626, 0.503072477, 0.55774353, 0.611637741],
+        [0, 0.408190137, 0.510126955, 0.572806033, 0.627439726]
     ]
 
     interpolator = RegularGridInterpolator((mach_numbers, deployment_levels), drag_coeffs)
@@ -384,7 +384,7 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
 
 
 def initialize_base_rocket():
-    # -------------------- Specifications for K400 motor --------------------
+    # -------------------- Specifications for M2400 motor --------------------
     AeroTech_M2400T = SolidMotor(
         thrust_source="AeroTech_M2400T.eng",
         dry_mass=2.758,  # mass of motor without propellant
@@ -404,29 +404,29 @@ def initialize_base_rocket():
         coordinate_system_orientation="nozzle_to_combustion_chamber",
     )
 
-    mojito = Rocket(
+    some_rocket_name = Rocket(
         radius=0.1524,  # radius in m
         mass=16.4,  # dry mass in kg
         # All mass moments of inertia are using the dry mass of the rocket
         # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
         # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
         inertia=(9.17, 9.17, 0.381),  # mass moments of inertia about x, y, and z axes
-        power_off_drag="powerOffDragCurveK400.csv",
-        power_on_drag="powerOnDragCurveK400.csv",
+        power_off_drag="powerOffDragCurveM2400.csv",
+        power_on_drag="powerOnDragCurveM2400.csv",
         center_of_mass_without_motor=1.41,
         coordinate_system_orientation="nose_to_tail"
     )
 
     # TODO: Modify part positions and possibly the motors center of mass
     # All the positions have to be relative to the distance of the nose of the rocket
-    mojito.add_motor(AeroTech_M2400T, position=2.105)
+    some_rocket_name.add_motor(AeroTech_M2400T, position=2.105)
 
-    mojito.set_rail_buttons(upper_button_position=1.473, lower_button_position=2.06)
+    some_rocket_name.set_rail_buttons(upper_button_position=1.473, lower_button_position=2.06)
 
     # Add aerodynamic components
-    mojito.add_nose(length=0.590, kind="ogive", position=0)
+    some_rocket_name.add_nose(length=0.590, kind="ogive", position=0)
 
-    mojito.add_trapezoidal_fins(
+    some_rocket_name.add_trapezoidal_fins(
         n=3,
         root_chord=0.2,
         tip_chord=0.01,
@@ -434,9 +434,9 @@ def initialize_base_rocket():
         position=1.887,
     )
 
-    mojito.add_parachute(name="main", cd_s=2.2, trigger=369)
+    some_rocket_name.add_parachute(name="main", cd_s=2.2, trigger=369)
 
-    return mojito
+    return some_rocket_name
 
 
 if __name__ == "__main__":

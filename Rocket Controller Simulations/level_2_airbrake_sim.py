@@ -104,7 +104,7 @@ def main():
         )
 
     air_brakes = mojito.add_air_brakes(
-        drag_coefficient_curve="air_brake_deployment_data.csv",
+        drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
         controller_function=controller_function,
         sampling_rate=200,
         reference_area=None,
@@ -209,7 +209,7 @@ def main():
     mojito = initialize_base_rocket()
 
     mojito.add_air_brakes(
-        drag_coefficient_curve="air_brake_deployment_data.csv",
+        drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
         controller_function=controller_function,
         sampling_rate=200,
         reference_area=None,
@@ -347,15 +347,15 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
     mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     drag_coeffs: list[list[float]] = [
         [0, 0, 0, 0, 0],
-        [0.484455781, 0.370481556, 0.424189869, 0.460481711, 0.501541095],
-        [0.49451265, 0.327569465, 0.409090087, 0.455112722, 0.49773203],
-        [0.501742369, 0.31367034, 0.406985797, 0.456193802, 0.499135351],
-        [0.504890439, 0.317494903, 0.409256946, 0.461219701, 0.503252629],
-        [0.506025828, 0.323488649, 0.410878827, 0.464872337, 0.508892964],
-        [0.506592807, 0.320294485, 0.413512723, 0.469369044, 0.514095489],
-        [0.507668973, 0.30957922, 0.421336892, 0.471799453, 0.523979987],
-        [0.51117623, 0.308752715, 0.424021613, 0.482733443, 0.533868504],
-        [0.521776412, 0.303223303, 0.427707593, 0.486100686, 0.547969309]
+        [0, 0.370481556, 0.424189869, 0.460481711, 0.501541095],
+        [0, 0.327569465, 0.409090087, 0.455112722, 0.49773203],
+        [0, 0.31367034, 0.406985797, 0.456193802, 0.499135351],
+        [0, 0.317494903, 0.409256946, 0.461219701, 0.503252629],
+        [0, 0.323488649, 0.410878827, 0.464872337, 0.508892964],
+        [0, 0.320294485, 0.413512723, 0.469369044, 0.514095489],
+        [0, 0.30957922, 0.421336892, 0.471799453, 0.523979987],
+        [0, 0.308752715, 0.424021613, 0.482733443, 0.533868504],
+        [0, 0.303223303, 0.427707593, 0.486100686, 0.547969309]
     ]
 
     interpolator = RegularGridInterpolator((mach_numbers, deployment_levels), drag_coeffs)
