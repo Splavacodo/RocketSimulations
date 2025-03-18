@@ -29,10 +29,12 @@ def main():
     desired_height: int = 2987  # height in meters (for M2400 motor)
 
     # Gain parameters determined from root locus & step responses
-    # K: float = 0.068  # for J250
-    K: float = 0.072
+    K: float = 0.07125
     K_p: float = 0.025 * K
     K_d: float = 1 * K
+
+    print("K_p:", K_p)
+    print("K_d:", K_d)
 
     # The controller function is within main since it needs a reference to the environment
     def controller_function(
@@ -105,7 +107,7 @@ def main():
         )
 
     air_brakes = some_rocket_name.add_air_brakes(
-        drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
+        drag_coefficient_curve="air_brake_deployment_data_level_3.csv",
         controller_function=controller_function,
         sampling_rate=200,
         reference_area=None,
@@ -131,15 +133,17 @@ def main():
 
     obs_vars = controlled_test_flight.get_controller_observed_variables()
 
-    # with open("k400SimulatedAltitude", "w") as altitude_file:
-    #     for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
-    #         time_list.append(time)
-    #         altitude_list.append(altitude)
-    #         altitude_file.write(str(altitude) + "\n")
-    #         deployment_level_list.append(deployment_level)
-    #         drag_coefficient_list.append(drag_coefficient)
-    #         height_err_list.append(height_err)
-    #         controller_output_list.append(-controller_output)
+    base_flight_time: list[float] = []
+    base_flight_altitude: list[float] = []
+
+    with open("level_3_base_flight_altitude.csv") as altitude_file:
+        altitude_file.readline()  # to skip over the data labels
+
+        for data_point in altitude_file.readlines():
+            time, altitude = data_point.strip().split(",")
+
+            base_flight_time.append(float(time))
+            base_flight_altitude.append(float(altitude) - env.elevation)
 
     for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
         time_list.append(time)
@@ -150,20 +154,20 @@ def main():
         controller_output_list.append(-controller_output)
 
     # Plot deployment level by time
-    # plt.plot(time_list, deployment_level_list)
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Deployment Level")
-    # plt.title("Deployment Level vs. Time")
-    # plt.grid()
-    # plt.show()
+    plt.plot(time_list, deployment_level_list)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Deployment Level")
+    plt.title("Deployment Level vs. Time")
+    plt.grid()
+    plt.show()
 
     # Plot of controller output by time
-    # plt.plot(time_list, controller_output_list)
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Controller Force Output (N)")
-    # plt.title("Controller Force Output vs. Time")
-    # plt.grid()
-    # plt.show()
+    plt.plot(time_list, controller_output_list)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Controller Force Output (N)")
+    plt.title("Controller Force Output vs. Time")
+    plt.grid()
+    plt.show()
 
     # Plot drag coefficient by time
     # plt.plot(time_list, drag_coefficient_list)
@@ -183,11 +187,12 @@ def main():
 
     # Plot of the altitude of the rocket with time
     plt.plot(time_list, altitude_list)
+    plt.plot(base_flight_time, base_flight_altitude)
     plt.axhline(y=desired_height, color='k', linestyle='--')
     plt.xlabel("Time (s)")
     plt.ylabel("Altitude (Above Ground Level) [m]")
     plt.title("Altitude (Above Ground Level) vs. Time")
-    plt.legend(["Rocket Altitude", "Desired Height = " + str(desired_height) + " m"])
+    plt.legend(["Controlled Rocket Flight", "Base Rocket Flight", "Desired Height = " + str(desired_height) + " m"])
     plt.grid()
     plt.show()
 
@@ -196,95 +201,14 @@ def main():
     # base_test_flight.altitude()
     base_test_flight.prints.apogee_conditions()
 
+    # Uncomment the line below to export the base flight data
+    # base_test_flight.export_data("level_3_base_flight_altitude.csv", "z")
+
     # controlled_test_flight.aerodynamic_drag()
     controlled_test_flight.prints.apogee_conditions()
     # controlled_test_flight.altitude()
 
     print("Apogee Error:", desired_height - altitude_list[-1], "m")
-
-    # K: float = 0.072
-    # K_p: float = 0.08 * K
-    # K_d: float = 1 * K
-
-    # To run another simulation, the whole rocket needs to be reinitialized
-    # some_rocket_name = initialize_base_rocket()
-
-    # some_rocket_name.add_air_brakes(
-    #     drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
-    #     controller_function=controller_function,
-    #     sampling_rate=200,
-    #     reference_area=None,
-    #     clamp=True,
-    #     initial_observed_variables=[0, 0, 0, 0, 0, 0],
-    #     override_rocket_drag=False,
-    #     name="Air Brakes"
-    # )
-
-    # controlled_test_flight = Flight(
-    #     rocket=some_rocket_name,
-    #     environment=env,
-    #     rail_length=5.2,
-    #     inclination=85,
-    #     heading=0,
-    #     time_overshoot=False,
-    #     terminate_on_apogee=True
-    # )
-
-    # pd_time_list, pd_altitude_list, pd_deployment_level_list, pd_drag_coefficient_list, pd_height_err_list, pd_controller_output_list = [], [], [], [], [], []
-    #
-    # obs_vars = controlled_test_flight.get_controller_observed_variables()
-    #
-    # for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
-    #     pd_time_list.append(time)
-    #     pd_altitude_list.append(altitude)
-    #     pd_deployment_level_list.append(deployment_level)
-    #     pd_drag_coefficient_list.append(drag_coefficient)
-    #     pd_height_err_list.append(height_err)
-    #     pd_controller_output_list.append(-controller_output)
-
-    # Plot comparing deployment level
-    # plt.plot(time_list, deployment_level_list)
-    # plt.plot(pd_time_list, pd_deployment_level_list)
-    #
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Deployment Level")
-    # plt.title("Deployment Level vs. Time")
-    # plt.legend(["Ideal Gains", "Tuned Gains"])
-    #
-    # plt.grid()
-    # plt.show()
-
-    # Plot comparing controller output
-    # plt.plot(time_list, controller_output_list)
-    #
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Controller Force Output (N)")
-    # plt.title("Controller Force Output vs. Time")
-    #
-    # plt.grid()
-    # plt.show()
-    #
-    # plt.plot(pd_time_list, pd_controller_output_list)
-    #
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Controller Force Output (N)")
-    # plt.title("Controller Force Output vs. Time")
-    #
-    # plt.grid()
-    # plt.show()
-
-    # Plot comparing altitude
-    # plt.plot(time_list, altitude_list)
-    # plt.plot(pd_time_list, pd_altitude_list)
-    # plt.axhline(y=desired_height, color='k', linestyle='--')
-    #
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Altitude (Above Ground Level) [m]")
-    # plt.title("Altitude (Above Ground Level) vs. Time")
-    # plt.legend(["Ideal Gains", "Tuned Gains", "Desired Height = " + str(desired_height) + " m"])
-    #
-    # plt.grid()
-    # plt.show()
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
@@ -300,7 +224,7 @@ def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, a
     Returns:
         deployment_level (float): The deployment level of the air brake to provide the given drag force
     """
-    air_brake_area: float = 0.0033483  # m², the full air brake area
+    air_brake_area: float = 0.008787078  # m², the full air brake area
 
     # Helper function to find the drag coefficient for a given deployment level
     def drag_force_error(deployment_level: float) -> float:
@@ -345,7 +269,7 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
         return 0
 
     deployment_levels: list[float] = [0, 0.25, 0.5, 0.75, 1]
-    mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.93]
     drag_coeffs: list[list[float]] = [
         [0, 0, 0, 0, 0],
         [0, 0.444486249, 0.507960781, 0.544841711, 0.594581464],
@@ -356,6 +280,7 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
         [0, 0.411546029, 0.484154172, 0.537079146, 0.587973526],
         [0, 0.407979926, 0.491932723, 0.543695454, 0.598682104],
         [0, 0.413460626, 0.503072477, 0.55774353, 0.611637741],
+        [0, 0.408190137, 0.510126955, 0.572806033, 0.627439726],
         [0, 0.408190137, 0.510126955, 0.572806033, 0.627439726]
     ]
 
@@ -374,7 +299,7 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
         longitude (float): Launch site longitude in degrees
         elevation (float): Elevation of launch site above sea level
     """
-    env = Environment(latitude=latitude, longitude=-longitude, elevation=elevation)
+    env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
     launch_day = datetime.date.today() + datetime.timedelta(days=0)
 
     env.set_date((launch_day.year, launch_day.month, launch_day.day, 18))  # Hour given in UTC time
@@ -390,14 +315,14 @@ def initialize_base_rocket():
         dry_mass=2.758,  # mass of motor without propellant
         dry_inertia=(0.0819, 0.0819, 3.31e-3),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
         nozzle_radius=49 / 1000,  # mm to m conversion, took this as the diameter of the motor
-        grain_number=3,
+        grain_number=4,
         grain_density=1815,
         grain_outer_radius=49 / 1000,
         grain_initial_inner_radius=37 / 1000,
-        grain_initial_height=0.0718,
+        grain_initial_height=0.12,
         grain_separation=10 / 1000,
-        grains_center_of_mass_position=0.18,
-        center_of_dry_mass_position=0.177,
+        grains_center_of_mass_position=0.3,
+        center_of_dry_mass_position=0.28,
         nozzle_position=0,
         burn_time=3.28,  # seconds
         throat_radius=33 / 1000,
@@ -405,7 +330,7 @@ def initialize_base_rocket():
     )
 
     some_rocket_name = Rocket(
-        radius=0.1524,  # radius in m
+        radius=0.0762,  # radius in m
         mass=16.4,  # dry mass in kg
         # All mass moments of inertia are using the dry mass of the rocket
         # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
@@ -417,24 +342,24 @@ def initialize_base_rocket():
         coordinate_system_orientation="nose_to_tail"
     )
 
-    # TODO: Modify part positions and possibly the motors center of mass
     # All the positions have to be relative to the distance of the nose of the rocket
-    some_rocket_name.add_motor(AeroTech_M2400T, position=2.105)
+    some_rocket_name.add_motor(AeroTech_M2400T, position=2.565)
 
-    some_rocket_name.set_rail_buttons(upper_button_position=1.473, lower_button_position=2.06)
+    some_rocket_name.set_rail_buttons(upper_button_position=1.8, lower_button_position=2.5)
 
     # Add aerodynamic components
-    some_rocket_name.add_nose(length=0.590, kind="ogive", position=0)
+    some_rocket_name.add_nose(length=0.796, kind="ogive", position=0)
 
     some_rocket_name.add_trapezoidal_fins(
         n=3,
-        root_chord=0.2,
-        tip_chord=0.01,
-        span=0.081,
-        position=1.887,
+        root_chord=0.356,
+        tip_chord=0.102,
+        span=0.203,
+        position=2.218,
     )
 
-    some_rocket_name.add_parachute(name="main", cd_s=2.2, trigger=369)
+    main_parachute = some_rocket_name.add_parachute(name="main", cd_s=2.2, trigger=369)
+    drogue_parachute = some_rocket_name.add_parachute(name="drogue", cd_s=2.2, trigger='apogee')
 
     return some_rocket_name
 
