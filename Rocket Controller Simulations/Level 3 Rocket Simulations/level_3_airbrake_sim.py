@@ -10,7 +10,7 @@ def main():
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
     # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
-    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615)
+    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=3)
     some_rocket_name = initialize_base_rocket()
 
     # some_rocket_name.draw()
@@ -29,7 +29,7 @@ def main():
     desired_height: int = 2987  # height in meters (for M2400 motor)
 
     # Gain parameters determined from root locus & step responses
-    K: float = 0.07125
+    K: float = 0.1523
     K_p: float = 0.025 * K
     K_d: float = 1 * K
 
@@ -269,7 +269,7 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
         return 0
 
     deployment_levels: list[float] = [0, 0.25, 0.5, 0.75, 1]
-    mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.93]
+    mach_numbers: list[float] = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
     drag_coeffs: list[list[float]] = [
         [0, 0, 0, 0, 0],
         [0, 0.444486249, 0.507960781, 0.544841711, 0.594581464],
@@ -290,7 +290,7 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
     return drag_coefficient
 
 
-def initialize_flight_environment(latitude: float, longitude: float, elevation: float):
+def initialize_flight_environment(latitude: float, longitude: float, elevation: float, day_delta: int):
     """
     Initializes the flight environment for the simulation given the latitude, longitude, and elevation of the launch site.
 
@@ -298,9 +298,10 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
         latitude (float): Launch site latitude in degrees
         longitude (float): Launch site longitude in degrees
         elevation (float): Elevation of launch site above sea level
+        day_delta (int): The number of days following today of the scheduled flight
     """
     env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
-    launch_day = datetime.date.today() + datetime.timedelta(days=0)
+    launch_day = datetime.date.today() + datetime.timedelta(days=day_delta)
 
     env.set_date((launch_day.year, launch_day.month, launch_day.day, 18))  # Hour given in UTC time
     env.set_atmospheric_model(type="Forecast", file="GFS")

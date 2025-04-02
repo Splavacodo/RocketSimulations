@@ -9,7 +9,8 @@ def main():
     # Spaceport (New Mexico) latitude/longitude/elevation: latitude=32.990254, longitude=-106.974998, elevation=735
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
-    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=847)
+    # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
+    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=847, day_delta=3)
     mojito = initialize_base_rocket()
 
     # mojito.draw()
@@ -364,7 +365,7 @@ def find_air_brake_drag_coefficient(mach_number: float, deployment_level: float)
     return drag_coefficient
 
 
-def initialize_flight_environment(latitude: float, longitude: float, elevation: float):
+def initialize_flight_environment(latitude: float, longitude: float, elevation: float, day_delta: int):
     """
     Initializes the flight environment for the simulation given the latitude, longitude, and elevation of the launch site.
 
@@ -372,9 +373,10 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
         latitude (float): Launch site latitude in degrees
         longitude (float): Launch site longitude in degrees
         elevation (float): Elevation of launch site above sea level
+        day_delta (int): The number of days following today of the scheduled flight
     """
-    env = Environment(latitude=latitude, longitude=-longitude, elevation=elevation)
-    launch_day = datetime.date.today() + datetime.timedelta(days=0)
+    env = Environment(latitude=latitude, longitude=longitude, elevation=elevation)
+    launch_day = datetime.date.today() + datetime.timedelta(days=day_delta)
 
     env.set_date((launch_day.year, launch_day.month, launch_day.day, 18))  # Hour given in UTC time
     env.set_atmospheric_model(type="Forecast", file="GFS")
