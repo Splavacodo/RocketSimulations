@@ -10,7 +10,7 @@ def main():
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
     # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
-    env = initialize_flight_environment(latitude=35.78, longitude=-115.25, elevation=847, day_delta=3)
+    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=3)
     mojito = initialize_base_rocket()
 
     # mojito.draw()
@@ -24,12 +24,12 @@ def main():
         terminate_on_apogee=True
     )
 
-    # desired_height: int = 460  # height in meters (for J250 motor)
-    desired_height: int = 1080  # height in meters (for K400 motor)
+    desired_height: int = 475  # height in meters (for J250 motor)
+    # desired_height: int = 1080  # height in meters (for K400 motor)
 
-    # Gain parameters determined from root locus & step responses
-    # K: float = 0.068  # for J250
-    K: float = 0.072
+    # Gain parameters determined from root locus
+    K: float = 0.03216  # for J250
+    # K: float = 0.072  # for K400
     K_p: float = 0.08 * K
     K_d: float = 1 * K
 
@@ -93,7 +93,6 @@ def main():
 
         air_brakes.deployment_level = new_deployment_level
 
-
         # Return variables of interest to be saved in the observed_variables list
         return (
             time,
@@ -141,6 +140,18 @@ def main():
     #         height_err_list.append(height_err)
     #         controller_output_list.append(-controller_output)
 
+    base_flight_time: list[float] = []
+    base_flight_altitude: list[float] = []
+
+    with open("level_2_base_flight_altitude.csv") as altitude_file:
+        altitude_file.readline()  # to skip over the data labels
+
+        for data_point in altitude_file.readlines():
+            time, altitude = data_point.strip().split(",")
+
+            base_flight_time.append(float(time))
+            base_flight_altitude.append(float(altitude) - env.elevation)
+
     for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
         time_list.append(time)
         altitude_list.append(altitude)
@@ -158,12 +169,12 @@ def main():
     # plt.show()
 
     # Plot of controller output by time
-    # plt.plot(time_list, controller_output_list)
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Controller Force Output (N)")
-    # plt.title("Controller Force Output vs. Time")
-    # plt.grid()
-    # plt.show()
+    plt.plot(time_list, controller_output_list)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Controller Force Output (N)")
+    plt.title("Controller Force Output vs. Time")
+    plt.grid()
+    plt.show()
 
     # Plot drag coefficient by time
     # plt.plot(time_list, drag_coefficient_list)
@@ -182,109 +193,114 @@ def main():
     # plt.show()
 
     # Plot of the altitude of the rocket with time
-    # plt.plot(time_list, altitude_list)
-    # plt.axhline(y=desired_height, color='k', linestyle='--')
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Altitude (Above Ground Level) [m]")
-    # plt.title("Altitude (Above Ground Level) vs. Time")
-    # plt.legend(["Rocket Altitude", "Desired Height = " + str(desired_height) + " m"])
-    # plt.grid()
-    # plt.show()
+    plt.plot(time_list, altitude_list)
+    plt.plot(base_flight_time, base_flight_altitude)
+    plt.axhline(y=desired_height, color='k', linestyle='--')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Altitude (Above Ground Level) [m]")
+    plt.title("Altitude (Above Ground Level) vs. Time")
+    plt.legend(["Controlled Rocket Flight", "Base Rocket Flight", "Desired Height = " + str(desired_height) + " m"])
+    plt.grid()
+    plt.show()
 
     # Comparison of flights
     # plots.CompareFlights([base_test_flight, controlled_test_flight]).trajectories_3d()
     # base_test_flight.altitude()
-    # base_test_flight.prints.apogee_conditions()
+    base_test_flight.prints.apogee_conditions()
+
+    # base_test_flight.export_data("level_2_base_flight_altitude.csv", "z")
 
     # controlled_test_flight.aerodynamic_drag()
-    # controlled_test_flight.prints.apogee_conditions()
+    controlled_test_flight.prints.apogee_conditions()
     # controlled_test_flight.altitude()
 
-    # print("Apogee Error:", desired_height - altitude_list[-1], "m")
+    print("Apogee Error:", desired_height - altitude_list[-1], "m")
 
-    K: float = 0.072
-    K_p: float = 0.08 * K
-    K_d: float = 1 * K
+    # K: float = 0.072
+    # K_p: float = 0.08 * K
+    # K_d: float = 1 * K
 
     # To run another simulation, the whole rocket needs to be reinitialized
-    mojito = initialize_base_rocket()
+    # mojito = initialize_base_rocket()
 
-    mojito.add_air_brakes(
-        drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
-        controller_function=controller_function,
-        sampling_rate=200,
-        reference_area=None,
-        clamp=True,
-        initial_observed_variables=[0, 0, 0, 0, 0, 0],
-        override_rocket_drag=False,
-        name="Air Brakes"
-    )
+    # mojito.add_air_brakes(
+    #     drag_coefficient_curve="air_brake_deployment_data_level_2.csv",
+    #     controller_function=controller_function,
+    #     sampling_rate=200,
+    #     reference_area=None,
+    #     clamp=True,
+    #     initial_observed_variables=[0, 0, 0, 0, 0, 0],
+    #     override_rocket_drag=False,
+    #     name="Air Brakes"
+    # )
 
-    controlled_test_flight = Flight(
-        rocket=mojito,
-        environment=env,
-        rail_length=5.2,
-        inclination=85,
-        heading=0,
-        time_overshoot=False,
-        terminate_on_apogee=True
-    )
+    # controlled_test_flight = Flight(
+    #     rocket=mojito,
+    #     environment=env,
+    #     rail_length=5.2,
+    #     inclination=85,
+    #     heading=0,
+    #     time_overshoot=False,
+    #     terminate_on_apogee=True
+    # )
 
-    pd_time_list, pd_altitude_list, pd_deployment_level_list, pd_drag_coefficient_list, pd_height_err_list, pd_controller_output_list = [], [], [], [], [], []
+    # pd_time_list, pd_altitude_list, pd_deployment_level_list, pd_drag_coefficient_list, pd_height_err_list, pd_controller_output_list = [], [], [], [], [], []
 
-    obs_vars = controlled_test_flight.get_controller_observed_variables()
+    # obs_vars = controlled_test_flight.get_controller_observed_variables()
 
-    for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
-        pd_time_list.append(time)
-        pd_altitude_list.append(altitude)
-        pd_deployment_level_list.append(deployment_level)
-        pd_drag_coefficient_list.append(drag_coefficient)
-        pd_height_err_list.append(height_err)
-        pd_controller_output_list.append(-controller_output)
+    # for time, altitude, deployment_level, drag_coefficient, height_err, controller_output in obs_vars:
+    #     pd_time_list.append(time)
+    #     pd_altitude_list.append(altitude)
+    #     pd_deployment_level_list.append(deployment_level)
+    #     pd_drag_coefficient_list.append(drag_coefficient)
+    #     pd_height_err_list.append(height_err)
+    #     pd_controller_output_list.append(-controller_output)
 
     # Plot comparing deployment level
-    plt.plot(time_list, deployment_level_list)
-    plt.plot(pd_time_list, pd_deployment_level_list)
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("Deployment Level")
-    plt.title("Deployment Level vs. Time")
-    plt.legend(["Ideal Gains", "Tuned Gains"])
-
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, deployment_level_list)
+    # plt.plot(pd_time_list, pd_deployment_level_list)
+    #
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Deployment Level")
+    # plt.title("Deployment Level vs. Time")
+    # plt.legend(["Ideal Gains", "Tuned Gains"])
+    #
+    # plt.grid()
+    # plt.show()
 
     # Plot comparing controller output
-    plt.plot(time_list, controller_output_list)
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("Controller Force Output (N)")
-    plt.title("Controller Force Output vs. Time")
-
-    plt.grid()
-    plt.show()
-
-    plt.plot(pd_time_list, pd_controller_output_list)
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("Controller Force Output (N)")
-    plt.title("Controller Force Output vs. Time")
-
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, controller_output_list)
+    #
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Controller Force Output (N)")
+    # plt.title("Controller Force Output vs. Time")
+    #
+    # plt.grid()
+    # plt.show()
+    #
+    # plt.plot(pd_time_list, pd_controller_output_list)
+    #
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Controller Force Output (N)")
+    # plt.title("Controller Force Output vs. Time")
+    #
+    # plt.grid()
+    # plt.show()
 
     # Plot comparing altitude
-    plt.plot(time_list, altitude_list)
-    plt.plot(pd_time_list, pd_altitude_list)
-    plt.axhline(y=desired_height, color='k', linestyle='--')
+    # plt.plot(time_list, altitude_list)
+    # plt.plot(pd_time_list, pd_altitude_list)
+    # plt.axhline(y=desired_height, color='k', linestyle='--')
+    #
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Altitude (Above Ground Level) [m]")
+    # plt.title("Altitude (Above Ground Level) vs. Time")
+    # plt.legend(["Ideal Gains", "Tuned Gains", "Desired Height = " + str(desired_height) + " m"])
+    #
+    # plt.grid()
+    # plt.show()
 
-    plt.xlabel("Time (s)")
-    plt.ylabel("Altitude (Above Ground Level) [m]")
-    plt.title("Altitude (Above Ground Level) vs. Time")
-    plt.legend(["Ideal Gains", "Tuned Gains", "Desired Height = " + str(desired_height) + " m"])
-
-    plt.grid()
-    plt.show()
+    # write_flight_altitude_to_file("J250_simulated_altitude_460", time_list, altitude_list, K_p, K_d)
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
@@ -386,24 +402,24 @@ def initialize_flight_environment(latitude: float, longitude: float, elevation: 
 
 def initialize_base_rocket():
     # -------------------- Specifications for K400 motor --------------------
-    AeroTech_K400C = SolidMotor(
-        thrust_source="AeroTech_K400C.eng",
-        dry_mass=0.701,  # mass of motor without propellant
-        dry_inertia=(7.53e-3, 7.53e-3, 2.55e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
-        nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
-        grain_number=3,
-        grain_density=1815,
-        grain_outer_radius=27 / 1000,
-        grain_initial_inner_radius=15 / 1000,
-        grain_initial_height=0.0718,
-        grain_separation=5 / 1000,
-        grains_center_of_mass_position=0.18,
-        center_of_dry_mass_position=0.177,
-        nozzle_position=0,
-        burn_time=3.2,  # seconds
-        throat_radius=11 / 1000,
-        coordinate_system_orientation="nozzle_to_combustion_chamber",
-    )
+    # AeroTech_K400C = SolidMotor(
+    #     thrust_source="AeroTech_K400C.eng",
+    #     dry_mass=0.701,  # mass of motor without propellant
+    #     dry_inertia=(7.53e-3, 7.53e-3, 2.55e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
+    #     nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
+    #     grain_number=3,
+    #     grain_density=1815,
+    #     grain_outer_radius=27 / 1000,
+    #     grain_initial_inner_radius=15 / 1000,
+    #     grain_initial_height=0.0718,
+    #     grain_separation=5 / 1000,
+    #     grains_center_of_mass_position=0.18,
+    #     center_of_dry_mass_position=0.177,
+    #     nozzle_position=0,
+    #     burn_time=3.2,  # seconds
+    #     throat_radius=11 / 1000,
+    #     coordinate_system_orientation="nozzle_to_combustion_chamber",
+    # )
 
     mojito = Rocket(
         radius=0.0528,  # radius in m
@@ -417,45 +433,45 @@ def initialize_base_rocket():
         center_of_mass_without_motor=1.21,
         coordinate_system_orientation="nose_to_tail"
     )
-    #
+
     # All the positions have to be relative to the distance of the center of mass without a motor
-    mojito.add_motor(AeroTech_K400C, position=2.105)
+    # mojito.add_motor(AeroTech_K400C, position=2.105)
 
     # -------------------- Specifications for J250 motor --------------------
-    # AeroTech_J250W = SolidMotor(
-    #     thrust_source="AeroTech_J250W.eng",
-    #     dry_mass=0.345,  # mass of motor without propellant, in kg
-    #     dry_inertia=(1.37e-3, 1.37e-3, 5.03e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
-    #     nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
-    #     grain_number=3,
-    #     grain_density=1815,
-    #     grain_outer_radius=27 / 1000,
-    #     grain_initial_inner_radius=15 / 1000,
-    #     grain_initial_height=0.0718,
-    #     grain_separation=5 / 1000,
-    #     grains_center_of_mass_position=0.19,
-    #     center_of_dry_mass_position=0.177,
-    #     nozzle_position=0,
-    #     burn_time=2.9,  # seconds
-    #     throat_radius=11 / 1000,
-    #     coordinate_system_orientation="nozzle_to_combustion_chamber",
-    # )
-    #
-    # mojito = Rocket(
-    #     radius=0.0528,  # radius in m
-    #     mass=5.24,  # dry mass in kg
-    #     # All mass moments of inertia are using the dry mass of the rocket
-    #     # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
-    #     # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
-    #     inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
-    #     power_off_drag="powerOffDragCurveJ250.csv",
-    #     power_on_drag="powerOnDragCurveJ250.csv",
-    #     center_of_mass_without_motor=1.21,
-    #     coordinate_system_orientation="nose_to_tail"
-    # )
+    AeroTech_J250W = SolidMotor(
+        thrust_source="AeroTech_J250W.eng",
+        dry_mass=0.345,  # mass of motor without propellant, in kg
+        dry_inertia=(1.37e-3, 1.37e-3, 5.03e-4),  # I_x = I_y = 1/12 * mL^2 ; I_z = 1/2 * mR^2
+        nozzle_radius=27 / 1000,  # mm to m conversion, took this as the diameter of the motor
+        grain_number=3,
+        grain_density=1815,
+        grain_outer_radius=27 / 1000,
+        grain_initial_inner_radius=15 / 1000,
+        grain_initial_height=0.0718,
+        grain_separation=5 / 1000,
+        grains_center_of_mass_position=0.19,
+        center_of_dry_mass_position=0.177,
+        nozzle_position=0,
+        burn_time=2.9,  # seconds
+        throat_radius=11 / 1000,
+        coordinate_system_orientation="nozzle_to_combustion_chamber",
+    )
+
+    mojito = Rocket(
+        radius=0.0528,  # radius in m
+        mass=5.24,  # dry mass in kg
+        # All mass moments of inertia are using the dry mass of the rocket
+        # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
+        # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
+        inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
+        power_off_drag="powerOffDragCurveJ250.csv",
+        power_on_drag="powerOnDragCurveJ250.csv",
+        center_of_mass_without_motor=1.21,
+        coordinate_system_orientation="nose_to_tail"
+    )
 
     # All the positions have to be relative to the distance of the center of mass without a motor
-    # mojito.add_motor(AeroTech_J250W, position=2.105)
+    mojito.add_motor(AeroTech_J250W, position=2.105)
     mojito.set_rail_buttons(upper_button_position=1.473, lower_button_position=2.06)
 
     # Add aerodynamic components
@@ -472,6 +488,30 @@ def initialize_base_rocket():
     mojito.add_parachute(name="main", cd_s=2.2, trigger=369)
 
     return mojito
+
+
+def write_flight_altitude_to_file(filename: str, time_data: list[float], altitude_data: list[float], k_p: float, k_d: float):
+    """
+    Writes the simulated altitude of the rocket up to apogee (in meters) to a designated csv file.
+
+    This method is useful for referencing any flights that occur on days in the past since RocketPy is not capable of
+    initializing flight environments in the past.
+
+    A header is provided in the csv file to label the data.
+
+    Args:
+        filename (str): The name of csv file to write the data to
+        time_data (list[float]): Each sampled time of the simulated flight
+        altitude_data (list[float]): The altitude of the rocket up to apogee
+        k_p (float): Proportional gain used during the simulated flight
+        k_d (float): Derivative gain used during the simulated flight
+    """
+    with open(filename, "w") as simulated_altitude_file:
+        simulated_altitude_file.write("simulated altitude (m), K_p = " + str(k_p) + ", K_d = " + str(k_d))
+
+        for i in range(len(altitude_data)):
+            simulated_altitude_file.write(str(time_data[i]) + ", " + str(altitude_data[i]) + "\n")
+
 
 if __name__ == "__main__":
     main()
