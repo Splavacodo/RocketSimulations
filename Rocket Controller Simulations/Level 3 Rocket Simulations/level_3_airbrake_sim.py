@@ -10,7 +10,7 @@ def main():
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
     # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
-    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=3)
+    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=1)
     some_rocket_name = initialize_base_rocket()
 
     # some_rocket_name.draw()
@@ -24,17 +24,13 @@ def main():
         terminate_on_apogee=True
     )
 
-    # desired_height: int = 460  # height in meters (for J250 motor)
-    # desired_height: int = 1080  # height in meters (for K400 motor)
-    desired_height: int = 2987  # height in meters (for M2400 motor)
+    desired_height: int = 2896  # height in meters (for M2400 motor)
+    # desired_height: int = ...  # height in meters (for L2500 motor)
 
-    # Gain parameters determined from root locus & step responses
-    K: float = 0.1523
+    # Gain parameters determined from root locus
+    K: float = 0.19
     K_p: float = 0.025 * K
     K_d: float = 1 * K
-
-    print("K_p:", K_p)
-    print("K_d:", K_d)
 
     # The controller function is within main since it needs a reference to the environment
     def controller_function(
@@ -51,7 +47,7 @@ def main():
 
         # Calculate Mach number
         free_stream_speed = (
-                                    (wind_x - vx) ** 2 + (wind_y - vy) ** 2 + (vz) ** 2
+                                (wind_x - vx) ** 2 + (wind_y - vy) ** 2 + (vz) ** 2
                             ) ** 0.5
         mach_number: float = free_stream_speed / env.speed_of_sound(altitude_ASL)
         air_density: float = env.density(altitude_ASL)
@@ -136,6 +132,9 @@ def main():
     base_flight_time: list[float] = []
     base_flight_altitude: list[float] = []
 
+    # Uncomment the line below to export the base flight altitude data
+    # base_test_flight.export_data("level_3_base_flight_altitude.csv", "z")
+
     with open("level_3_base_flight_altitude.csv") as altitude_file:
         altitude_file.readline()  # to skip over the data labels
 
@@ -154,12 +153,12 @@ def main():
         controller_output_list.append(-controller_output)
 
     # Plot deployment level by time
-    plt.plot(time_list, deployment_level_list)
-    plt.xlabel("Time (s)")
-    plt.ylabel("Deployment Level")
-    plt.title("Deployment Level vs. Time")
-    plt.grid()
-    plt.show()
+    # plt.plot(time_list, deployment_level_list)
+    # plt.xlabel("Time (s)")
+    # plt.ylabel("Deployment Level")
+    # plt.title("Deployment Level vs. Time")
+    # plt.grid()
+    # plt.show()
 
     # Plot of controller output by time
     plt.plot(time_list, controller_output_list)
@@ -201,14 +200,13 @@ def main():
     # base_test_flight.altitude()
     base_test_flight.prints.apogee_conditions()
 
-    # Uncomment the line below to export the base flight data
-    # base_test_flight.export_data("level_3_base_flight_altitude.csv", "z")
-
     # controlled_test_flight.aerodynamic_drag()
     controlled_test_flight.prints.apogee_conditions()
     # controlled_test_flight.altitude()
 
     print("Apogee Error:", desired_height - altitude_list[-1], "m")
+
+    # write_flight_altitude_to_file("M2400_simulated_altitude_2896m", time_list, altitude_list, K_p, K_d)
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
@@ -330,6 +328,8 @@ def initialize_base_rocket():
         coordinate_system_orientation="nozzle_to_combustion_chamber",
     )
 
+    # TODO: Create a model for L2500 motor
+
     some_rocket_name = Rocket(
         radius=0.0762,  # radius in m
         mass=16.4,  # dry mass in kg
@@ -363,6 +363,28 @@ def initialize_base_rocket():
     drogue_parachute = some_rocket_name.add_parachute(name="drogue", cd_s=2.2, trigger='apogee')
 
     return some_rocket_name
+
+def write_flight_altitude_to_file(filename: str, time_data: list[float], altitude_data: list[float], k_p: float, k_d: float):
+    """
+    Writes the simulated altitude of the rocket up to apogee (in meters) to a designated csv file.
+
+    This method is useful for referencing any flights that occur on days in the past since RocketPy is not capable of
+    initializing flight environments in the past.
+
+    A header is provided in the csv file to label the data.
+
+    Args:
+        filename (str): The name of csv file to write the data to
+        time_data (list[float]): Each sampled time of the simulated flight
+        altitude_data (list[float]): The altitude of the rocket up to apogee
+        k_p (float): Proportional gain used during the simulated flight
+        k_d (float): Derivative gain used during the simulated flight
+    """
+    with open(filename, "w") as simulated_altitude_file:
+        simulated_altitude_file.write("time (s), simulated altitude (m), K_p = " + str(k_p) + ", K_d = " + str(k_d) + "\n")
+
+        for i in range(len(altitude_data)):
+            simulated_altitude_file.write(str(time_data[i]) + ", " + str(altitude_data[i]) + "\n")
 
 
 if __name__ == "__main__":

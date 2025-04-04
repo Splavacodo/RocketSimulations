@@ -10,7 +10,7 @@ def main():
     # Jean Lake (Nevada) latitude/longitude/elevation: latitude=35.78, longitude=-115.25, elevation=847
     # Grand Junction (Colorado) latitude/longitude/elevation: latitude=39.279167, longitude=109, elevation=1499
     # UROC (Frank Hunt Field) latitude/longitude/elevation: latitude=39.25024, longitude=-111.75103, elevation=1615
-    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=3)
+    env = initialize_flight_environment(latitude=39.25024, longitude=-111.75103, elevation=1615, day_delta=1)
     mojito = initialize_base_rocket()
 
     # mojito.draw()
@@ -300,7 +300,7 @@ def main():
     # plt.grid()
     # plt.show()
 
-    # write_flight_altitude_to_file("J250_simulated_altitude_460", time_list, altitude_list, K_p, K_d)
+    write_flight_altitude_to_file("J250_simulated_altitude_475m", time_list, altitude_list, K_p, K_d)
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
@@ -421,18 +421,18 @@ def initialize_base_rocket():
     #     coordinate_system_orientation="nozzle_to_combustion_chamber",
     # )
 
-    mojito = Rocket(
-        radius=0.0528,  # radius in m
-        mass=5.24,  # dry mass in kg
-        # All mass moments of inertia are using the dry mass of the rocket
-        # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
-        # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
-        inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
-        power_off_drag="powerOffDragCurveK400.csv",
-        power_on_drag="powerOnDragCurveK400.csv",
-        center_of_mass_without_motor=1.21,
-        coordinate_system_orientation="nose_to_tail"
-    )
+    # mojito = Rocket(
+    #     radius=0.0528,  # radius in m
+    #     mass=5.24,  # dry mass in kg
+    #     # All mass moments of inertia are using the dry mass of the rocket
+    #     # mass moment of inertia about z, I_z = mr^2 (of a hoop through the center)
+    #     # mass moment of inertia about x and y, I_x = I_y = mL^2/12 (of long rod about CG)
+    #     inertia=(1.93, 1.93, 0.0147),  # mass moments of inertia about x, y, and z axes
+    #     power_off_drag="powerOffDragCurveK400.csv",
+    #     power_on_drag="powerOnDragCurveK400.csv",
+    #     center_of_mass_without_motor=1.21,
+    #     coordinate_system_orientation="nose_to_tail"
+    # )
 
     # All the positions have to be relative to the distance of the center of mass without a motor
     # mojito.add_motor(AeroTech_K400C, position=2.105)
@@ -507,7 +507,7 @@ def write_flight_altitude_to_file(filename: str, time_data: list[float], altitud
         k_d (float): Derivative gain used during the simulated flight
     """
     with open(filename, "w") as simulated_altitude_file:
-        simulated_altitude_file.write("simulated altitude (m), K_p = " + str(k_p) + ", K_d = " + str(k_d))
+        simulated_altitude_file.write("time (s), simulated altitude (m), K_p = " + str(k_p) + ", K_d = " + str(k_d) + "\n")
 
         for i in range(len(altitude_data)):
             simulated_altitude_file.write(str(time_data[i]) + ", " + str(altitude_data[i]) + "\n")
