@@ -300,7 +300,7 @@ def main():
     # plt.grid()
     # plt.show()
 
-    write_flight_altitude_to_file("J250_simulated_altitude_475m", time_list, altitude_list, K_p, K_d)
+    write_flight_altitude_to_file("J250_simulated_altitude_475m.csv", time_list, altitude_list, K_p, K_d)
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:

@@ -206,7 +206,7 @@ def main():
 
     print("Apogee Error:", desired_height - altitude_list[-1], "m")
 
-    # write_flight_altitude_to_file("M2400_simulated_altitude_2896m", time_list, altitude_list, K_p, K_d)
+    # write_flight_altitude_to_file("M2400_simulated_altitude_2896m.csv", time_list, altitude_list, K_p, K_d)
 
 
 def find_deployment_level(mach_num: float, curr_vel: float, drag_force: float, air_density: float) -> float:
